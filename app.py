@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from config import Config
 from models import mongo
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
@@ -27,24 +27,38 @@ except Exception as e:
 
 
 # ============================
-#  CONSTANTS
+#  CONSTANTS & STATUS LOGIC
 # ============================
 
 BASE_UPLOAD_FOLDER = "static/uploads"
 
 # Final authority mapping (Hyderabad-style)
 AUTHORITY_MAP = {
-    "Pothole": "GHMC",          # Roads & carriageway
-    "Garbage": "GHMC",          # Solid waste, roadside garbage
-
-    "Streetlight": "TSSPDCL",   # Streetlights, poles, hanging wires
-
-    "Waterlogging": "HMWSSB",   # Water & sewerage / drainage issues
-
-    "Unsafe Area": "HYDRA",     # Public safety / hazard areas
-
-    "Other Urban Issue": "GHMC" # Fallback
+    "Pothole": "GHMC",          
+    "Garbage": "GHMC",          
+    "Streetlight": "TSSPDCL",   
+    "Waterlogging": "HMWSSB",   
+    "Unsafe Area": "HYDRA",     
+    "Other Urban Issue": "GHMC" 
 }
+
+def get_real_world_status(created_at):
+    """
+    Calculates the status based on a real-world simulation timer.
+    - 0 to 10 mins: Report Received
+    - 10 to 20 mins: Work Order Dispatched
+    - 20+ mins: Issue Resolved
+    """
+    now = datetime.utcnow()
+    # Calculate difference in minutes
+    minutes_passed = (now - created_at).total_seconds() / 60 
+    
+    if minutes_passed < 10:
+        return "Report Received"
+    elif minutes_passed < 20:
+        return "Work Order Dispatched"
+    else:
+        return "Issue Resolved"
 
 
 # ============================
@@ -53,12 +67,9 @@ AUTHORITY_MAP = {
 
 def analyze_image_unified(image_bytes: bytes) -> dict:
     """
-    Run the ML model (HOG + SVM) on the uploaded image
-    and return issue type + severity + confidence.
+    Run the ML model (HOG + SVM) on the uploaded image.
     """
-
     if MODEL is None:
-        # Fallback in case model failed to load
         return {
             "issue_type_ai": "Other Urban Issue",
             "ai_severity": "Low",
@@ -69,7 +80,6 @@ def analyze_image_unified(image_bytes: bytes) -> dict:
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
     if img is None:
-        # Fallback if decoding fails
         return {
             "issue_type_ai": "Other Urban Issue",
             "ai_severity": "Low",
@@ -85,7 +95,7 @@ def analyze_image_unified(image_bytes: bytes) -> dict:
     hog_features = hog_features.reshape(1, -1)
 
     # Predict
-    prediction = MODEL.predict(hog_features)[0]      # e.g. "garbage", "pothole"
+    prediction = MODEL.predict(hog_features)[0]      
     confidence = float(max(MODEL.predict_proba(hog_features)[0]))
 
     # Severity based on confidence
@@ -97,25 +107,17 @@ def analyze_image_unified(image_bytes: bytes) -> dict:
         severity = "Low"
 
     return {
-        # keep raw-ish label; we'll normalize later
-        "issue_type_ai": prediction.replace("_", " "),  # "unsafe_area" -> "unsafe area"
+        "issue_type_ai": prediction.replace("_", " "),  
         "ai_severity": severity,
         "confidence": confidence
     }
 
 
 def calculate_priority_score_unified(ai_data, existing_reports_count):
-    """
-    Simple weighted priority score using:
-    - severity (High/Medium/Low)
-    - density (how many reports nearby)
-    - model confidence
-    """
     severity_map = {"High": 1.0, "Medium": 0.6, "Low": 0.3}
-
-    sev = severity_map.get(ai_data["ai_severity"], 0.3)
+    sev = severity_map.get(ai_data.get("ai_severity", "Low"), 0.3)
     dens = min(existing_reports_count / 5.0, 1.0)
-    conf = ai_data["confidence"]
+    conf = ai_data.get("confidence", 0.5)
 
     score = (sev * 5) + (dens * 3) + (conf * 2)
     return round(score, 2)
@@ -127,7 +129,7 @@ def calculate_priority_score_unified(ai_data, existing_reports_count):
 
 def serialize_report(report):
     """
-    Convert MongoDB document into JSON for frontend.
+    Convert MongoDB document into JSON for frontend with dynamic status.
     """
     report["_id"] = str(report["_id"])
     lon, lat = report["location"]["coordinates"]
@@ -136,7 +138,8 @@ def serialize_report(report):
         "id": report["_id"],
         "issue_type": report["issue_type"],
         "description": report["description"],
-        "status": report["status"],
+        # Status is calculated dynamically every time the dashboard is loaded
+        "status": get_real_world_status(report["created_at"]),
         "priority_score": report["ai_priority_score"],
         "target_authority": AUTHORITY_MAP.get(report["issue_type"], "GHMC"),
         "image_url": f"/{report['image_path']}",
@@ -153,7 +156,6 @@ def register_api_endpoints(app):
 
     @app.route("/api/report", methods=["POST"])
     def submit_report():
-
         data = request.form
         reports_collection = mongo.db.reports
 
@@ -162,33 +164,24 @@ def register_api_endpoints(app):
 
         file: FileStorage = request.files["image"]
 
-        # --- READ IMAGE BYTES FOR AI ---
+        # Read image for AI
         image_bytes = file.read()
         file.stream.seek(0)
 
         ai_data = analyze_image_unified(image_bytes)
 
-        # --- NORMALIZE AI LABEL & COMBINE WITH USER INPUT ---
-
-        # AI raw label (e.g. "garbage", "waterlogging", "unsafe area")
+        # Normalize AI label & combine with user input
         raw_label = ai_data["issue_type_ai"]
-        # Normalize to Title Case (e.g. "Garbage", "Waterlogging", "Unsafe Area")
         normalized_ai = raw_label.strip().title()
 
-        # If user selected a type in dropdown, prefer that; else use AI label
         user_issue = data.get("issue_type")
-        if user_issue:
-            issue_type_final = user_issue.strip()
-        else:
-            issue_type_final = normalized_ai
+        issue_type_final = user_issue.strip() if user_issue else normalized_ai
 
-        # Map to authority
         target_authority = AUTHORITY_MAP.get(issue_type_final, "GHMC")
 
-        # Coordinates
         try:
             lon = float(data.get("longitude"))
-            lat = float(data.get("latitude"))
+            lat = float(data.get('latitude'))
         except Exception:
             return jsonify({"error": "Invalid coordinates"}), 400
 
@@ -206,7 +199,7 @@ def register_api_endpoints(app):
 
         priority_score = calculate_priority_score_unified(ai_data, existing_reports)
 
-        # Save Image (locally for now)
+        # Save Image locally
         authority_folder = os.path.join(BASE_UPLOAD_FOLDER, target_authority)
         os.makedirs(authority_folder, exist_ok=True)
 
@@ -218,13 +211,12 @@ def register_api_endpoints(app):
 
         # Save to DB
         doc = {
-            "issue_type": issue_type_final,  # Title case, matches AUTHORITY_MAP keys
+            "issue_type": issue_type_final,
             "description": data.get("description", "No description provided."),
             "image_path": image_path,
             "location": geojson_location,
             "ai_priority_score": priority_score,
             "ai_severity": ai_data["ai_severity"],
-            "status": "AI Analyzed",
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
@@ -241,24 +233,19 @@ def register_api_endpoints(app):
     @app.route("/api/reports", methods=["GET"])
     def get_all_reports():
         reports_collection = mongo.db.reports
-
         authority_filter = request.args.get("authority")
         status_filter = request.args.get("status")
 
         query = {}
-
         if authority_filter:
-            issues = [
-                issue for issue, auth in AUTHORITY_MAP.items()
-                if auth == authority_filter
-            ]
+            issues = [i for i, a in AUTHORITY_MAP.items() if a == authority_filter]
             if issues:
                 query["issue_type"] = {"$in": issues}
 
-        if status_filter:
-            query["status"] = status_filter
-
-        cursor = reports_collection.find(query).sort("ai_priority_score", -1)
+        # Fetch all matching reports
+        cursor = reports_collection.find(query).sort("created_at", -1)
+        
+        # Note: Dynamic status is applied during serialization
         return jsonify([serialize_report(r) for r in cursor])
 
 
