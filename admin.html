@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏛️ Admin Dashboard | Urban Issues Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary: #0f172a;
+            --primary-light: #1e293b;
+            --accent: #3b82f6;
+            --accent-dark: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .sidebar-logo i {
+            color: var(--accent);
+            font-size: 1.5rem;
+        }
+
+        .user-card {
+            margin: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.75rem;
+            font-size: 1.5rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-section {
+            padding: 1rem;
+        }
+
+        .nav-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.75rem;
+            padding-left: 0.5rem;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .nav-btn i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .nav-btn .badge {
+            margin-left: auto;
+            background: var(--danger);
+            color: white;
+            padding: 0.125rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            margin: 1rem;
+            padding: 0.875rem;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 280px;
+            flex: 1;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .stat-card.pending::before {
+            background: var(--warning);
+        }
+
+        .stat-card.accepted::before {
+            background: var(--success);
+        }
+
+        .stat-card.assigned::before {
+            background: var(--accent);
+        }
+
+        .stat-card.completed::before {
+            background: #8b5cf6;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card.pending .stat-icon {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .stat-card.accepted .stat-icon {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .stat-card.assigned .stat-icon {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .stat-card.completed .stat-icon {
+            background: #ede9fe;
+            color: #5b21b6;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Reports Section */
+        .reports-section {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-tab {
+            padding: 0.5rem 1rem;
+            background: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            background: #e2e8f0;
+        }
+
+        .filter-tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Reports Grid */
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .report-card {
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .report-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .report-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .report-body {
+            padding: 1.25rem;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .report-type {
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        .report-id {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .status-badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-accepted {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-assigned {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .report-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .report-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .meta-item i {
+            color: var(--accent);
+            width: 16px;
+        }
+
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .priority-high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .priority-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .priority-low {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Action Buttons */
+        .action-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.625rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-accept {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .btn-accept:hover:not(:disabled) {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-assign {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .btn-assign:hover:not(:disabled) {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-complete {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .btn-complete:hover:not(:disabled) {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .reports-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-city"></i>
+                <span>Urban Admin</span>
+            </div>
+        </div>
+
+        <div class="user-card">
+            <div class="user-avatar"><i class="fas fa-user-shield"></i></div>
+            <div class="user-name" id="admin-name">Administrator</div>
+            <div class="user-role">Government Official</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">Filter by Authority</div>
+            <button class="nav-btn active" data-filter="">
+                <i class="fas fa-th-large"></i> All Reports
+                <span class="badge" id="badge-all">0</span>
+            </button>
+            <button class="nav-btn" data-filter="GHMC">
+                <i class="fas fa-road"></i> GHMC
+            </button>
+            <button class="nav-btn" data-filter="TSSPDCL">
+                <i class="fas fa-lightbulb"></i> TSSPDCL
+            </button>
+            <button class="nav-btn" data-filter="HMWSSB">
+                <i class="fas fa-tint"></i> HMWSSB
+            </button>
+            <button class="nav-btn" data-filter="HYDRA">
+                <i class="fas fa-exclamation-triangle"></i> HYDRA
+            </button>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">Filter by Status</div>
+            <button class="nav-btn" data-status="Pending">
+                <i class="fas fa-clock"></i> Pending
+            </button>
+            <button class="nav-btn" data-status="Accepted">
+                <i class="fas fa-check"></i> Accepted
+            </button>
+            <button class="nav-btn" data-status="Assigned">
+                <i class="fas fa-user-check"></i> Assigned
+            </button>
+            <button class="nav-btn" data-status="Completed">
+                <i class="fas fa-check-double"></i> Completed
+            </button>
+        </div>
+
+        <button class="logout-btn" id="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Issue Management</h1>
+                <p class="page-subtitle">Monitor and manage city-wide urban issues</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card pending">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-value" id="stat-pending">0</div>
+                <div class="stat-label">Pending Review</div>
+            </div>
+            <div class="stat-card accepted">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-value" id="stat-accepted">0</div>
+                <div class="stat-label">Accepted</div>
+            </div>
+            <div class="stat-card assigned">
+                <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+                <div class="stat-value" id="stat-assigned">0</div>
+                <div class="stat-label">Assigned</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-icon"><i class="fas fa-check-double"></i></div>
+                <div class="stat-value" id="stat-completed">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+
+        <!-- Analytics Charts Section -->
+        <div class="reports-section" style="margin-top: 2rem;">
+            <div class="section-header">
+                <h2 class="section-title">📊 Analytics Dashboard</h2>
+                <button class="filter-tab" id="toggle-charts-btn">
+                    <i class="fas fa-chart-pie"></i> Toggle Charts
+                </button>
+            </div>
+            <div id="charts-container"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0 0 1rem; font-size: 1rem; color: #374151;">Issues by Type</h3>
+                    <canvas id="typeChart" height="200"></canvas>
+                </div>
+                <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0 0 1rem; font-size: 1rem; color: #374151;">Issues by Status</h3>
+                    <canvas id="statusChart" height="200"></canvas>
+                </div>
+                <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0 0 1rem; font-size: 1rem; color: #374151;">Issues by Authority</h3>
+                    <canvas id="authorityChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports -->
+        <div class="reports-section">
+            <div class="section-header">
+                <h2 class="section-title" id="section-title">All Reports</h2>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading reports...</p>
+            </div>
+
+            <div id="reports-container" class="reports-grid" style="display: none;"></div>
+
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">No Reports Found</div>
+                <div class="empty-text">There are no reports matching your filters.</div>
+            </div>
+        </div>
+
+        <!-- Heatmap Section -->
+        <div class="reports-section" style="margin-top: 2rem;">
+            <div class="section-header">
+                <h2 class="section-title">🔥 Issue Heatmap</h2>
+                <button class="filter-tab" id="toggle-heatmap-btn">
+                    <i class="fas fa-fire"></i> Toggle Heatmap
+                </button>
+            </div>
+            <div id="heatmap-container" style="display: none;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <button class="heatmap-filter active" data-type=""
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem;">
+                        All Issues
+                    </button>
+                    <button class="heatmap-filter" data-type="Pothole"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem;">
+                        Potholes
+                    </button>
+                    <button class="heatmap-filter" data-type="Streetlight"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem;">
+                        Streetlights
+                    </button>
+                    <button class="heatmap-filter" data-type="Garbage"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem;">
+                        Garbage
+                    </button>
+                </div>
+                <div id="heatmap" style="height: 450px; border-radius: 12px; border: 2px solid #e5e7eb;"></div>
+                <p style="margin-top: 0.75rem; font-size: 0.8rem; color: #6b7280;">
+                    <i class="fas fa-info-circle"></i> Darker areas indicate higher concentration of reported issues
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let allReports = [];
+        let currentFilter = '';
+        let currentStatus = '';
+
+        // Check auth
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('admin-name').textContent = data.username;
+                    if (data.role !== 'admin') {
+                        window.location.href = '/';
+                    }
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (e) {
+                window.location.href = '/login';
+            }
+        }
+
+        // Load reports
+        async function loadReports() {
+            console.log('Loading reports...');
+            try {
+                const res = await fetch('/api/reports');
+                console.log('Response status:', res.status);
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('API Error:', errorText);
+                    document.getElementById('loading').innerHTML = `<p style="color: red;">Error loading reports: ${res.status}</p>`;
+                    return;
+                }
+
+                allReports = await res.json();
+                console.log('Loaded reports:', allReports.length, allReports);
+                updateStats();
+                filterReports();
+            } catch (e) {
+                console.error('Load error:', e);
+                document.getElementById('loading').innerHTML = `<p style="color: red;">Error: ${e.message}</p>`;
+            }
+        }
+
+        // Chart instances
+        let typeChart = null;
+        let statusChart = null;
+        let authorityChart = null;
+
+        // Update stats and charts
+        function updateStats() {
+            const stats = { Pending: 0, Accepted: 0, Assigned: 0, Completed: 0 };
+            allReports.forEach(r => { if (stats[r.status] !== undefined) stats[r.status]++; });
+
+            document.getElementById('stat-pending').textContent = stats.Pending;
+            document.getElementById('stat-accepted').textContent = stats.Accepted;
+            document.getElementById('stat-assigned').textContent = stats.Assigned;
+            document.getElementById('stat-completed').textContent = stats.Completed;
+            document.getElementById('badge-all').textContent = allReports.length;
+
+            // Render charts
+            renderCharts();
+        }
+
+        function renderCharts() {
+            // Issue type distribution
+            const typeCounts = {};
+            allReports.forEach(r => {
+                typeCounts[r.issue_type] = (typeCounts[r.issue_type] || 0) + 1;
+            });
+
+            // Destroy existing charts
+            if (typeChart) typeChart.destroy();
+            if (statusChart) statusChart.destroy();
+            if (authorityChart) authorityChart.destroy();
+
+            // Type Chart (Pie)
+            const typeCtx = document.getElementById('typeChart').getContext('2d');
+            typeChart = new Chart(typeCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(typeCounts),
+                    datasets: [{
+                        data: Object.values(typeCounts),
+                        backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e', '#8b5cf6', '#ef4444'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Status Chart (Doughnut)
+            const statusCounts = { Pending: 0, Accepted: 0, Assigned: 0, Completed: 0 };
+            allReports.forEach(r => { if (statusCounts[r.status] !== undefined) statusCounts[r.status]++; });
+
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#22c55e'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Authority Chart (Bar)
+            const authorityCounts = { GHMC: 0, TSSPDCL: 0, HMWSSB: 0, HYDRA: 0 };
+            allReports.forEach(r => {
+                if (authorityCounts[r.target_authority] !== undefined) {
+                    authorityCounts[r.target_authority]++;
+                }
+            });
+
+            const authorityCtx = document.getElementById('authorityChart').getContext('2d');
+            authorityChart = new Chart(authorityCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(authorityCounts),
+                    datasets: [{
+                        label: 'Issues',
+                        data: Object.values(authorityCounts),
+                        backgroundColor: ['#6366f1', '#f59e0b', '#06b6d4', '#ef4444'],
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // Toggle charts visibility
+        document.getElementById('toggle-charts-btn').addEventListener('click', () => {
+            const container = document.getElementById('charts-container');
+            container.style.display = container.style.display === 'none' ? 'grid' : 'none';
+        });
+
+        // Filter reports
+        function filterReports() {
+            let filtered = allReports;
+
+            if (currentFilter) {
+                filtered = filtered.filter(r => r.target_authority === currentFilter);
+            }
+            if (currentStatus) {
+                filtered = filtered.filter(r => r.status === currentStatus);
+            }
+
+            displayReports(filtered);
+        }
+
+        // Display reports
+        function displayReports(reports) {
+            const container = document.getElementById('reports-container');
+            const loading = document.getElementById('loading');
+            const empty = document.getElementById('empty-state');
+
+            loading.style.display = 'none';
+
+            if (reports.length === 0) {
+                container.style.display = 'none';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            container.style.display = 'grid';
+
+            container.innerHTML = reports.map(r => `
+                <div class="report-card" data-id="${r._id}">
+                    <img src="${r.image_url}" alt="${r.issue_type}" class="report-image">
+                    <div class="report-body">
+                        <div class="report-header">
+                            <div>
+                                <div class="report-type">${r.issue_type}</div>
+                                <div class="report-id">#${r._id.slice(-6).toUpperCase()}</div>
+                            </div>
+                            <span class="status-badge status-${r.status.toLowerCase()}">${r.status}</span>
+                        </div>
+                        <p class="report-desc">${r.description}</p>
+                        <div class="report-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-building"></i>
+                                <span>${r.target_authority}</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-signal"></i>
+                                <span class="priority-badge priority-${r.priority_score > 7 ? 'high' : r.priority_score > 4 ? 'medium' : 'low'}">
+                                    Priority ${r.priority_score}/10
+                                </span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>${new Date(r.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>${r.latitude?.toFixed(4)}, ${r.longitude?.toFixed(4)}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed #e5e7eb;">
+                            <span style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: #3b82f6;">
+                                <i class="fas fa-thumbs-up"></i> ${r.upvote_count || 0} upvotes
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: #f59e0b;">
+                                <i class="fas fa-eye"></i> ${r.verified_count || 0} verifications
+                            </span>
+                        </div>
+                        <div class="action-row">
+                            <button class="action-btn btn-accept" onclick="updateStatus('${r._id}', 'Accepted')" ${r.status !== 'Pending' ? 'disabled' : ''}>
+                                <i class="fas fa-check"></i> Accept
+                            </button>
+                            <button class="action-btn btn-assign" onclick="updateStatus('${r._id}', 'Assigned')" ${r.status !== 'Accepted' ? 'disabled' : ''}>
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                            <button class="action-btn btn-complete" onclick="updateStatus('${r._id}', 'Completed')" ${r.status !== 'Assigned' ? 'disabled' : ''}>
+                                <i class="fas fa-check-double"></i> Complete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update status
+        async function updateStatus(id, status) {
+            try {
+                const res = await fetch(`/api/reports/${id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                if (res.ok) {
+                    loadReports();
+                }
+            } catch (e) {
+                console.error('Update error:', e);
+            }
+        }
+
+        // Event listeners
+        document.querySelectorAll('.nav-btn[data-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-btn[data-filter]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                currentStatus = '';
+                document.querySelectorAll('.nav-btn[data-status]').forEach(b => b.classList.remove('active'));
+                document.getElementById('section-title').textContent = currentFilter ? `${currentFilter} Reports` : 'All Reports';
+                filterReports();
+            });
+        });
+
+        document.querySelectorAll('.nav-btn[data-status]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-btn[data-status]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentStatus = btn.dataset.status;
+                document.getElementById('section-title').textContent = `${currentStatus} Reports`;
+                filterReports();
+            });
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.href = '/api/auth/logout';
+        });
+
+        // ============================
+        //  HEATMAP FUNCTIONALITY
+        // ============================
+
+        let heatmapMap = null;
+        let heatLayer = null;
+        let currentHeatmapFilter = '';
+
+        function initHeatmap() {
+            if (heatmapMap) return;
+            heatmapMap = L.map('heatmap').setView([17.385, 78.486], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(heatmapMap);
+        }
+
+        function renderHeatmap(filterType = '') {
+            if (!heatmapMap) return;
+
+            // Remove existing heat layer
+            if (heatLayer) {
+                heatmapMap.removeLayer(heatLayer);
+            }
+
+            let reports = allReports;
+            if (filterType) {
+                reports = reports.filter(r => r.issue_type === filterType);
+            }
+
+            // Create heat data points [lat, lng, intensity]
+            const heatData = reports.map(r => {
+                // Intensity based on upvotes, verifications, and report count
+                const intensity = Math.min(1, (
+                    (r.upvote_count || 0) * 0.3 +
+                    (r.verified_count || 0) * 0.3 +
+                    (r.report_count || 1) * 0.2 +
+                    (r.priority_score || 5) * 0.02
+                ));
+                return [r.latitude, r.longitude, intensity + 0.3];
+            });
+
+            // Create heat layer with custom options
+            heatLayer = L.heatLayer(heatData, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                max: 1.0,
+                gradient: {
+                    0.0: 'blue',
+                    0.25: 'cyan',
+                    0.5: 'lime',
+                    0.75: 'yellow',
+                    1.0: 'red'
+                }
+            }).addTo(heatmapMap);
+
+            // Fit bounds if there are points
+            if (reports.length > 0) {
+                const bounds = reports.map(r => [r.latitude, r.longitude]);
+                heatmapMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        // Toggle heatmap visibility
+        document.getElementById('toggle-heatmap-btn').addEventListener('click', () => {
+            const container = document.getElementById('heatmap-container');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                initHeatmap();
+                setTimeout(() => {
+                    heatmapMap.invalidateSize();
+                    renderHeatmap(currentHeatmapFilter);
+                }, 100);
+            } else {
+                container.style.display = 'none';
+            }
+        });
+
+        // Heatmap filter buttons
+        document.querySelectorAll('.heatmap-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.heatmap-filter').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentHeatmapFilter = btn.dataset.type;
+                renderHeatmap(currentHeatmapFilter);
+            });
+        });
+
+        // Init
+        checkAuth();
+        loadReports();
+    </script>
+</body>
+
+</html>

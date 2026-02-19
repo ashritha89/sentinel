@@ -1,144 +1,640 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Citizen Issue Reporting and Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>🏙️ Urban Issues Dashboard | Smart City Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for Maps (Free, No API Key Required) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         :root {
-            --primary-color: #3b82f6; 
-            --accent-color: #f59e0b; 
-            --bg-color: #f3f4f6; 
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #3b82f6;
+            --accent-color: #f59e0b;
+            --accent-dark: #d97706;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --danger-color: #ef4444;
+            --danger-dark: #dc2626;
             --card-color: #ffffff;
-            --sidebar-color: #1f2937;
+            --sidebar-color: #1e293b;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --border-color: #e5e7eb;
         }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+            background-attachment: fixed;
             margin: 0;
             display: flex;
+            min-height: 100vh;
         }
+
+        /* Sidebar Styling */
         .sidebar {
-            width: 250px;
-            background-color: var(--sidebar-color);
+            width: 260px;
+            background: var(--sidebar-color);
             color: white;
             height: 100vh;
-            padding: 20px 0;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             flex-shrink: 0;
             overflow-y: auto;
+            position: sticky;
+            top: 0;
         }
+
         .sidebar h2 {
             text-align: center;
-            margin-bottom: 30px;
-            color: var(--accent-color);
-            font-size: 1.2rem;
+            padding: 25px 20px;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fbbf24;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
+
         .sidebar button {
             display: block;
             width: 90%;
             margin: 10px auto;
-            padding: 12px 15px;
-            background: none;
-            border: none;
-            border-radius: 6px;
+            padding: 14px 18px;
+            background: transparent;
             color: #d1d5db;
-            text-align: left;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.2s, color 0.2s;
+            transition: all 0.2s ease;
+            font-weight: 600;
             font-size: 0.95rem;
+            text-align: left;
         }
-        .sidebar button.active, .sidebar button:hover:not(#submit-btn) {
-            background-color: var(--primary-color);
-            color: var(--card-color);
+
+        .sidebar button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: translateX(4px);
         }
+
+        .sidebar button.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
         .main-content {
             flex-grow: 1;
             padding: 30px;
+            background: white;
+            overflow-y: auto;
         }
+
         .report-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
         }
+
         .report-card {
-            background-color: var(--card-color);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
         }
+
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            border-color: var(--primary-color);
+        }
+
         .report-card h3 {
-            color: #dc2626; 
-            margin-top: 0;
+            color: var(--danger-color);
+            margin: 0 0 15px 0;
             font-size: 1.2rem;
+            font-weight: 700;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
         }
+
         .report-card p {
-            margin: 5px 0;
-            color: #4b5563;
+            margin: 8px 0;
+            color: var(--text-dark);
             font-size: 0.9rem;
+            line-height: 1.5;
         }
+
+        .report-card p strong {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
         .report-card img {
             width: 100%;
             height: auto;
-            max-height: 200px;
+            max-height: 250px;
+            min-height: 200px;
             object-fit: cover;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-top: 10px;
+            border: 1px solid var(--border-color);
         }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .media-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .media-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .report-map {
+            width: 100%;
+            height: 250px;
+            border-radius: 6px;
+            margin: 0;
+            border: 2px solid #e5e7eb;
+        }
+
+        .map-link {
+            display: inline-block;
+            margin-top: 5px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .map-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Status Action Buttons */
+        .status-actions {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .status-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Accept Button */
+        .btn-accept {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-accept:hover:not(:disabled) {
+            background-color: #059669;
+        }
+
+        /* Assign Button */
+        .btn-assign {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .btn-assign:hover:not(:disabled) {
+            background-color: #4b5563;
+        }
+
+        .btn-assign.active {
+            background-color: #f59e0b;
+            color: white;
+        }
+
+        /* Complete Button */
+        .btn-complete {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .btn-complete:hover:not(:disabled) {
+            background-color: #4b5563;
+        }
+
+        .btn-complete.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-accepted {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-assigned {
+            background-color: #fed7aa;
+            color: #9a3412;
+        }
+
+        .status-completed {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
         #loading-message {
             text-align: center;
             font-size: 1.1rem;
-            color: #6b7280;
+            color: var(--text-light);
             margin-top: 50px;
-        }
-        .priority-high { color: #dc2626; font-weight: 700; }
-        .priority-medium { color: #facc15; font-weight: 700; }
-        .priority-low { color: #10b981; font-weight: 700; }
-
-        /* Submission Form Styles */
-        #submission-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: #374151;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        #submission-form-container {
-            border: 1px solid #ddd;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            padding: 0 20px;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-            max-height: 0; 
-            background-color: var(--card-color);
-        }
-        #submission-form-container.open {
-            max-height: 550px;
             padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #667eea20, #764ba220);
+            border-radius: 12px;
+            font-weight: 500;
         }
+
+        /* Submission Form Styling */
+        #submission-toggle {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 18px 25px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        #submission-toggle:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        #submission-form-container {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease;
+            max-height: 0;
+            background: linear-gradient(to bottom, #ffffff, #f9fafb);
+        }
+
+        #submission-form-container.open {
+            max-height: 1200px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Citizen Message Styling */
+        .citizen-message {
+            display: none;
+            background: #eff6ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .citizen-message.visible {
+            display: block;
+        }
+
+        .citizen-message h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .citizen-message p {
+            color: #1e40af;
+            font-size: 1rem;
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+
+        /* Dashboard Title */
+        #dashboard-title {
+            color: var(--text-dark);
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+        }
+
+        #submissionForm input:not(#submit-btn),
+        #submissionForm select,
+        #submissionForm textarea {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px 15px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 5px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        #submissionForm input:focus,
+        #submissionForm select:focus,
+        #submissionForm textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        #submit-btn {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+            color: white;
+            margin-top: 20px;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Search Location Button */
+        #search-location-btn {
+            background: var(--success-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        #search-location-btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Map Instructions */
+        .map-instructions {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            color: #1e40af;
+            font-weight: 500;
+        }
+
+        .location-display {
+            background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            border: 2px solid #e5e7eb;
+        }
+
+        /* Priority Badges */
+        .priority-high {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .priority-medium {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .priority-low {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        /* User Info in Sidebar */
+        #user-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 10px;
+            margin: 0 15px 20px 15px;
+            font-size: 0.9rem;
+            color: #fbbf24;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Logout Button */
+        #logout-btn {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626) !important;
+            color: white !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+        }
+
+        #logout-btn:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+            box-shadow: 0 6px 15px rgba(239, 68, 68, 0.4) !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            .main-content {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            .report-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .media-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Google Maps Styles */
+        #map {
+            width: 100%;
+            height: 350px;
+            border-radius: 8px;
+            border: 2px solid #d1d5db;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .map-instructions {
+            background-color: #eff6ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #1e40af;
+        }
+
+        .location-display {
+            background-color: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #374151;
+        }
+
+        /* Make Leaflet attribution smaller and less intrusive */
+        .leaflet-control-attribution {
+            font-size: 9px !important;
+            opacity: 0.7;
+            background: rgba(255, 255, 255, 0.8) !important;
+            padding: 2px 5px !important;
+        }
+
+        .leaflet-control-attribution a {
+            font-size: 9px !important;
+        }
+
+        /* Make Leaflet logo smaller */
+        .leaflet-control-attribution img {
+            max-height: 12px !important;
+            width: auto !important;
+        }
+
         .form-group label {
             margin-top: 10px;
             font-weight: 600;
             color: #1f2937;
         }
+
         .input-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 15px;
         }
-        #submissionForm input:not(#submit-btn), 
-        #submissionForm select, 
+
+        #submissionForm input:not(#submit-btn),
+        #submissionForm select,
         #submissionForm textarea {
             border: 1px solid #d1d5db;
             border-radius: 4px;
@@ -147,6 +643,7 @@
             box-sizing: border-box;
             margin-top: 5px;
         }
+
         #submit-btn {
             background-color: var(--accent-color);
             color: var(--card-color);
@@ -157,87 +654,181 @@
             border-radius: 6px;
             cursor: pointer;
         }
+
         .success-message {
-            background-color: #ecfdf5; color: #047857; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 5px solid #10b981;
+            background-color: #ecfdf5;
+            color: #047857;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 5px solid #10b981;
         }
+
         .error-message {
-            background-color: #fee2e2; color: #b91c1c; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 5px solid #dc2626;
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 5px solid #dc2626;
+        }
+
+        /* Role-based visibility */
+        .admin-only {
+            display: block;
+        }
+
+        .admin-only.hidden {
+            display: none !important;
+        }
+
+        .citizen-message {
+            display: none;
+            background-color: #eff6ff;
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .citizen-message.visible {
+            display: block;
+        }
+
+        .citizen-message h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .citizen-message p {
+            color: #1e40af;
+            font-size: 1rem;
+        }
+
+        /* Citizen-only elements (submission form) */
+        .citizen-only {
+            display: block;
+        }
+
+        .citizen-only.hidden {
+            display: none !important;
         }
     </style>
 </head>
+
 <body>
 
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <h2>Report Filtering</h2>
-        <button id="filter-all" data-authority="">All Reports</button>
+        <div id="user-info" style="text-align: center; margin-bottom: 20px; font-size: 0.9rem; color: #9ca3af;">
+            Loading User...
+        </div>
+        <button id="logout-btn" style="background: #dc2626; color: white;">Logout</button>
         <hr style="border-color: #374151; margin: 15px 0;">
-        <button id="filter-ghmc" data-authority="GHMC">GHMC (Roads & Garbage)</button>
-        <button id="filter-tsspdcl" data-authority="TSSPDCL">TSSPDCL (Streetlights)</button>
-        <button id="filter-hmwssb" data-authority="HMWSSB">HMWSSB (Water & Sewage)</button>
-        <button id="filter-hydra" data-authority="HYDRA">HYDRA (Unsafe/Asset)</button>
+        <div class="admin-only" id="filter-buttons">
+            <button id="filter-all" data-authority="">All Reports</button>
+            <hr style="border-color: #374151; margin: 15px 0;">
+            <button id="filter-ghmc" data-authority="GHMC">GHMC (Roads & Garbage)</button>
+            <button id="filter-tsspdcl" data-authority="TSSPDCL">TSSPDCL (Streetlights)</button>
+            <button id="filter-hmwssb" data-authority="HMWSSB">HMWSSB (Water & Sewage)</button>
+            <button id="filter-hydra" data-authority="HYDRA">HYDRA (Unsafe/Asset)</button>
+        </div>
     </div>
 
     <div class="main-content">
-        <!-- Submission Form -->
-        <div id="submission-toggle">
-            <span>➕ Report New Issue (AI Analysis Required)</span>
-            <span>&raquo;</span>
-        </div>
-        
-        <div id="submission-form-container">
-            <p>Fill out the form below. The system will automatically classify the issue and assign it to the responsible department.</p>
-            <div id="submission-output"></div>
+        <!-- Submission Form (Citizen Only) -->
+        <div class="citizen-only" id="submission-form-section">
+            <div id="submission-toggle">
+                <span>➕ Report New Issue (AI Analysis Required)</span>
+                <span>&raquo;</span>
+            </div>
 
-            <form id="submissionForm" action="http://127.0.0.1:5000/api/report" method="post" enctype="multipart/form-data">
-                
-                <div class="form-group">
-                    <label for="image">Issue Photo (Required):</label>
-                    <input type="file" id="image" name="image" accept="image/*" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="issue_type">Issue Type (Optional, AI will verify):</label>
-                    <select id="issue_type" name="issue_type">
-                        <option value="">-- Let AI Decide --</option>
-                        <option value="Pothole">Pothole / Road Damage</option>
-                        <option value="Streetlight">Broken Streetlight</option>
-                        <option value="Garbage">Overflowing Garbage</option>
-                        <option value="Waterlogging">Waterlogging / Drainage Issue</option>
-                        <option value="Unsafe Area">Unsafe Area / Encroachment</option>
-                    </select>
-                </div>
+            <div id="submission-form-container">
+                <p>Fill out the form below. The system will automatically classify the issue and assign it to the
+                    responsible department.</p>
+                <div id="submission-output"></div>
 
-                <div class="form-group">
-                    <label for="description">Description:</label>
-                    <textarea id="description" name="description" rows="2" placeholder="e.g., Large pothole right outside the main gate." required></textarea>
-                </div>
-                
-                <label>Location Coordinates (Latitude / Longitude):</label>
-                <div class="input-group">
+                <form id="submissionForm" action="http://127.0.0.1:5000/api/report" method="post"
+                    enctype="multipart/form-data">
+
                     <div class="form-group">
-                        <input type="text" id="latitude" name="latitude" value="17.435" placeholder="Latitude (e.g., 17.435)" required>
+                        <label for="image">Issue Photo (Required):</label>
+                        <input type="file" id="image" name="image" accept="image/*" required>
                     </div>
+
                     <div class="form-group">
-                        <input type="text" id="longitude" name="longitude" value="78.435" placeholder="Longitude (e.g., 78.435)" required>
+                        <label for="issue_type">Issue Type </label>
+                        <select id="issue_type" name="issue_type">
+                            <option value="">-- Let AI Decide --</option>
+                            <option value="Pothole">Pothole / Road Damage</option>
+                            <option value="Streetlight">Broken Streetlight</option>
+                            <option value="Garbage">Overflowing Garbage</option>
+                            <option value="Waterlogging">Waterlogging / Drainage Issue</option>
+                            <option value="Unsafe Area">Unsafe Area / Encroachment</option>
+                        </select>
                     </div>
-                </div>
 
-                <button type="submit" id="submit-btn">SUBMIT NEW REPORT</button>
-            </form>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <textarea id="description" name="description" rows="2"
+                            placeholder="e.g., Large pothole right outside the main gate." required></textarea>
+                    </div>
+
+                    <label>Location:</label>
+                    <div class="map-instructions">
+                        📍 <strong>Click on the map below</strong> to select the exact location, or <strong>type an
+                            address</strong> to search.
+                    </div>
+
+                    <!-- Location Name/Address Input -->
+                    <div class="form-group">
+                        <input type="text" id="location-name"
+                            placeholder="e.g., Banjara Hills, Hyderabad or search for a place..."
+                            style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; margin-bottom: 10px;">
+                        <button type="button" id="search-location-btn"
+                            style="padding: 8px 15px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 10px;">
+                            🔍 Search Location
+                        </button>
+                    </div>
+
+                    <!-- Map -->
+                    <div id="map"></div>
+
+                    <div class="location-display">
+                        <strong>Selected Location:</strong> <span id="location-display">Click on the map or search for a
+                            location</span>
+                    </div>
+
+                    <!-- Hidden fields for coordinates (sent to backend) -->
+                    <input type="hidden" id="latitude" name="latitude" value="17.435" required>
+                    <input type="hidden" id="longitude" name="longitude" value="78.435" required>
+
+                    <button type="submit" id="submit-btn">SUBMIT NEW REPORT</button>
+                </form>
+            </div>
+
+            <!-- Citizen Message (shown only to citizens) -->
+            <div class="citizen-message" id="citizen-message">
+                <h2>👋 Welcome, Citizen!</h2>
+                <p>✅ Your submitted reports will be reviewed by the relevant authorities.</p>
+            </div>
         </div>
-        <!-- End Submission Form -->
+        <!-- End Citizen-Only Section -->
 
-
-        <h1 id="dashboard-title" style="color: var(--sidebar-color); margin-top: 25px;">All City Issues</h1>
-        <div id="loading-message">Loading reports...</div>
-        <div class="report-grid" id="report-container">
-            <!-- Reports will be inserted here -->
+        <!-- Admin Dashboard (shown only to admins) -->
+        <div class="admin-only" id="dashboard-section">
+            <h1 id="dashboard-title" style="color: var(--sidebar-color); margin-top: 25px;">All City Issues</h1>
+            <div id="loading-message">Loading reports...</div>
+            <div class="report-grid" id="report-container">
+                <!-- Reports will be inserted here -->
+            </div>
         </div>
     </div>
 
     <script>
-       const API_BASE_URL = 'https://urban-issues-app.onrender.com/api/reports';
-       const SUBMIT_API_URL = 'https://urban-issues-app.onrender.com/api/report';
+        const API_BASE_URL = '/api/reports';
+        const SUBMIT_API_URL = '/api/report';
 
         const container = document.getElementById('report-container');
         const title = document.getElementById('dashboard-title');
@@ -266,33 +857,192 @@
             '': 'All City Issues'
         };
 
-        // --- AUTO-FILL COORDINATES USING BROWSER GPS ---
-        window.addEventListener('load', () => {
+        // --- LEAFLET MAP INTEGRATION WITH GEOCODING (FREE, NO API KEY) ---
+        let map;
+        let marker;
+        const defaultLocation = [17.435, 78.435]; // Hyderabad default [lat, lng]
+
+        // Reverse Geocoding: Convert coordinates to address
+        async function getAddressFromCoords(lat, lon) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+                const data = await response.json();
+
+                if (data && data.display_name) {
+                    // Extract meaningful parts of the address
+                    const address = data.address;
+                    let locationName = '';
+
+                    if (address.road || address.neighbourhood || address.suburb) {
+                        locationName = [
+                            address.road,
+                            address.neighbourhood || address.suburb,
+                            address.city || address.town || address.village
+                        ].filter(Boolean).join(', ');
+                    } else {
+                        locationName = data.display_name.split(',').slice(0, 3).join(',');
+                    }
+
+                    return locationName;
+                }
+                return `Location: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                return `Location: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+            }
+        }
+
+        // Forward Geocoding: Search for location by name
+        async function searchLocation(query) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    return {
+                        lat: parseFloat(result.lat),
+                        lon: parseFloat(result.lon),
+                        name: result.display_name
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error('Search error:', error);
+                return null;
+            }
+        }
+
+        function initMap() {
+            console.log('🗺️ Initializing Leaflet Map with Geocoding...');
             const latInput = document.getElementById('latitude');
             const lonInput = document.getElementById('longitude');
+            const locationDisplay = document.getElementById('location-display');
+            const locationNameInput = document.getElementById('location-name');
+            const searchBtn = document.getElementById('search-location-btn');
 
+            if (!latInput || !lonInput || !locationDisplay) {
+                console.error('❌ Map elements not found! Retrying in 500ms...');
+                setTimeout(initMap, 500);
+                return;
+            }
+
+            console.log('✅ Map elements found, creating map...');
+
+            // Initialize Leaflet map
+            map = L.map('map').setView(defaultLocation, 13);
+
+            // Add OpenStreetMap tiles (free!)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Create a draggable marker
+            marker = L.marker(defaultLocation, {
+                draggable: true,
+                title: "Issue Location"
+            }).addTo(map);
+
+            // Update coordinates when map is clicked
+            map.on('click', async function (e) {
+                const clickedLocation = [e.latlng.lat, e.latlng.lng];
+                await updateLocation(clickedLocation);
+            });
+
+            // Update coordinates when marker is dragged
+            marker.on('dragend', async function (e) {
+                const draggedLocation = [e.target.getLatLng().lat, e.target.getLatLng().lng];
+                await updateLocation(draggedLocation);
+            });
+
+            // Search button click handler
+            searchBtn.addEventListener('click', async function () {
+                const query = locationNameInput.value.trim();
+                if (!query) {
+                    alert('Please enter a location to search');
+                    return;
+                }
+
+                searchBtn.textContent = '🔍 Searching...';
+                searchBtn.disabled = true;
+
+                const result = await searchLocation(query);
+
+                if (result) {
+                    await updateLocation([result.lat, result.lon]);
+                    map.setView([result.lat, result.lon], 16);
+                } else {
+                    alert('Location not found. Please try a different search term.');
+                }
+
+                searchBtn.textContent = '🔍 Search Location';
+                searchBtn.disabled = false;
+            });
+
+            // Allow search on Enter key
+            locationNameInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchBtn.click();
+                }
+            });
+
+            // Function to update location inputs and marker
+            async function updateLocation(location) {
+                console.log('📍 Updating location:', location);
+                latInput.value = location[0].toFixed(6);
+                lonInput.value = location[1].toFixed(6);
+
+                // Get address name from coordinates
+                locationDisplay.textContent = '⏳ Getting location name...';
+                const addressName = await getAddressFromCoords(location[0], location[1]);
+
+                locationDisplay.textContent = addressName;
+                locationNameInput.value = addressName;
+
+                // Move marker to new location
+                marker.setLatLng(location);
+                map.panTo(location);
+            }
+
+            // Try to get user's current location
             if ('geolocation' in navigator) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        latInput.value = pos.coords.latitude.toFixed(6);
-                        lonInput.value = pos.coords.longitude.toFixed(6);
-                        console.log('Location updated from GPS');
+                    async (pos) => {
+                        const userLocation = [pos.coords.latitude, pos.coords.longitude];
+                        await updateLocation(userLocation);
+                        map.setView(userLocation, 15);
+                        console.log('✅ Location updated from GPS');
                     },
-                    (err) => {
-                        console.log('Geolocation error:', err.message);
-                        // Keep default values if user denies or error
+                    async (err) => {
+                        console.log('⚠️ Geolocation error:', err.message);
+                        // Keep default Hyderabad location
+                        await updateLocation(defaultLocation);
                     }
                 );
             } else {
-                console.log('Geolocation not supported by this browser');
+                console.log('⚠️ Geolocation not supported');
+                updateLocation(defaultLocation);
+            }
+        }
+
+        // Initialize map when DOM is ready
+        window.addEventListener('load', function () {
+            console.log('🚀 Page loaded, initializing Leaflet map...');
+            if (typeof L !== 'undefined') {
+                console.log('✅ Leaflet library loaded');
+                initMap();
+            } else {
+                console.error('❌ Leaflet library not loaded!');
             }
         });
 
         // --- UI TOGGLE LOGIC ---
         submissionToggle.addEventListener('click', () => {
             submissionContainer.classList.toggle('open');
-            submissionToggle.querySelector('span:first-child').textContent = submissionContainer.classList.contains('open') 
-                ? '➖ Hide Report Form' 
+            submissionToggle.querySelector('span:first-child').textContent = submissionContainer.classList.contains('open')
+                ? '➖ Hide Report Form'
                 : '➕ Report New Issue (AI Analysis Required)';
         });
 
@@ -304,21 +1054,21 @@
         }
 
         // --- SUBMISSION HANDLER ---
-        submissionForm.addEventListener('submit', async function(e) {
-            e.preventDefault(); 
-            
+        submissionForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting... Running AI...';
             submissionOutput.className = '';
             submissionOutput.innerHTML = '<p style="color: #4b5563;">Processing data and routing issue...</p>';
-            
+
             try {
                 const response = await fetch(SUBMIT_API_URL, {
                     method: 'POST',
                     body: new FormData(submissionForm)
                 });
                 const result = await response.json();
-                
+
                 if (response.status === 201) {
                     const targetAuthority = result.target_authority;
                     const contactInfo = CONTACTS[targetAuthority] || CONTACTS['GHMC'];
@@ -386,28 +1136,152 @@
                     const priorityClass = getPriorityClass(priority);
                     const referenceId = report.id.substring(0, 8).toUpperCase();
 
-                    const imagePath = report.image_url.startsWith('/')
-                        ? `http://127.0.0.1:5000${report.image_url}`
-                        : report.image_url;
+                    const imagePath = report.image_url;
+                    const mapId = `map-${report.id}`;
+
+
+                    // Get status badge class
+                    const statusClass = `status-${report.status.toLowerCase()}`;
+
+                    // Determine which buttons to show based on status
+                    let statusButtons = '';
+                    if (report.status === 'Pending') {
+                        statusButtons = `
+                            <div class="status-actions">
+                                <button class="status-btn btn-accept" onclick="updateReportStatus('${report.id}', 'Accepted')">
+                                    ✅ Accept Report
+                                </button>
+                            </div>
+                        `;
+                    } else if (report.status === 'Accepted') {
+                        statusButtons = `
+                            <div class="status-actions">
+                                <button class="status-btn btn-assign" onclick="updateReportStatus('${report.id}', 'Assigned')">
+                                    📋 Assign to Team
+                                </button>
+                                <button class="status-btn btn-complete" onclick="updateReportStatus('${report.id}', 'Completed')">
+                                    ✔️ Mark Complete
+                                </button>
+                            </div>
+                        `;
+                    } else if (report.status === 'Assigned') {
+                        statusButtons = `
+                            <div class="status-actions">
+                                <button class="status-btn btn-assign active" disabled>
+                                    📋 Assigned
+                                </button>
+                                <button class="status-btn btn-complete" onclick="updateReportStatus('${report.id}', 'Completed')">
+                                    ✔️ Mark Complete
+                                </button>
+                            </div>
+                        `;
+                    } else if (report.status === 'Completed') {
+                        statusButtons = `
+                            <div class="status-actions">
+                                <button class="status-btn btn-complete active" disabled>
+                                    ✔️ Completed
+                                </button>
+                            </div>
+                        `;
+                    }
 
                     card.innerHTML = `
                         <h3 class="${priorityClass}">[Priority: ${priority}]</h3>
                         <p><strong>ID:</strong> #${referenceId}</p>
                         <p><strong>Issue:</strong> ${report.issue_type}</p>
                         <p><strong>Authority:</strong> ${report.target_authority}</p>
-                        <p><strong>Status:</strong> ${report.status}</p>
+                        <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${report.status}</span></p>
                         <p><strong>Location:</strong> (${report.location.lat.toFixed(4)}, ${report.location.lon.toFixed(4)})</p>
                         <p><strong>Description:</strong> ${report.description}</p>
-                        <img src="${imagePath}" alt="Report Image"
-                             onerror="this.style.display='none'; this.previousElementSibling.textContent='(Image not available)';">
+                        
+                        ${statusButtons}
+                        
+                        <div class="media-grid">
+                            <div class="media-item">
+                                <div class="media-label">🗺️ Location Map</div>
+                                <div id="${mapId}" class="report-map"></div>
+                                <a href="https://www.google.com/maps?q=${report.location.lat},${report.location.lon}" target="_blank" class="map-link">
+                                    📍 Open in Google Maps
+                                </a>
+                            </div>
+                            <div class="media-item">
+                                <div class="media-label">📷 Issue Photo</div>
+                                <img src="${imagePath}" alt="Report Image"
+                                     onerror="this.style.display='none'; this.previousElementSibling.textContent='(Image not available)';">
+                            </div>
+                        </div>
                     `;
 
                     container.appendChild(card);
+
+                    // Initialize mini map for this report
+                    initReportMap(mapId, report.location.lat, report.location.lon, report.issue_type);
                 });
 
             } catch (error) {
                 loading.textContent = `Error fetching reports: ${error.message}. Ensure the Flask server is running.`;
             }
+        }
+
+        // --- UPDATE REPORT STATUS (ADMIN ONLY) ---
+        async function updateReportStatus(reportId, newStatus) {
+            try {
+                console.log(`🔄 Updating report ${reportId} to status: ${newStatus}`);
+
+                const response = await fetch(`/api/reports/${reportId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    console.log(`✅ Status updated successfully to: ${newStatus}`);
+                    // Refresh the reports to show updated status
+                    const currentAuthority = document.querySelector('.sidebar button.active')?.dataset.authority || '';
+                    fetchReports(currentAuthority);
+                } else {
+                    console.error('❌ Failed to update status:', data.error);
+                    alert(`Failed to update status: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('❌ Error updating status:', error);
+                alert('Error updating status. Please try again.');
+            }
+        }
+
+        // --- INITIALIZE MINI MAP FOR EACH REPORT (LEAFLET) ---
+        function initReportMap(mapId, lat, lon, issueType) {
+            // Wait for Leaflet to be available
+            if (typeof L === 'undefined') {
+                setTimeout(() => initReportMap(mapId, lat, lon, issueType), 100);
+                return;
+            }
+
+            const mapElement = document.getElementById(mapId);
+            if (!mapElement) {
+                console.error('Map element not found:', mapId);
+                return;
+            }
+
+            const location = [lat, lon];
+
+            // Create mini Leaflet map
+            const miniMap = L.map(mapId).setView(location, 16);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 19
+            }).addTo(miniMap);
+
+            // Add marker
+            L.marker(location, {
+                title: issueType
+            }).addTo(miniMap);
         }
 
         // Attach event listeners to sidebar buttons
@@ -417,8 +1291,59 @@
             });
         });
 
-        // Initial load (show all reports)
-        fetchReports('');
+        // --- LOGOUT LOGIC ---
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.href = '/api/auth/logout';
+        });
+
+        // --- FETCH USER INFO AND APPLY ROLE-BASED ACCESS ---
+        async function fetchUser() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                const data = await res.json();
+                document.getElementById('user-info').textContent = `Logged in as: ${data.username} (${data.role})`;
+
+                // Role-based access control
+                const isAdmin = data.role === 'admin';
+
+                // Get elements
+                const filterButtons = document.getElementById('filter-buttons');
+                const dashboardSection = document.getElementById('dashboard-section');
+                const submissionFormSection = document.getElementById('submission-form-section');
+                const citizenMessage = document.getElementById('citizen-message');
+
+                if (isAdmin) {
+                    // Admin: Show dashboard and filters, hide submission form
+                    console.log('✅ Admin user detected - showing dashboard only');
+                    filterButtons.classList.remove('hidden');
+                    dashboardSection.classList.remove('hidden');
+                    submissionFormSection.classList.add('hidden'); // Hide form from admin
+
+                    // Load reports for admin
+                    fetchReports('');
+                } else {
+                    // Citizen: Show submission form, hide dashboard and filters
+                    console.log('👤 Citizen user detected - showing submission form only');
+                    filterButtons.classList.add('hidden');
+                    dashboardSection.classList.add('hidden');
+                    submissionFormSection.classList.remove('hidden'); // Show form to citizen
+                    citizenMessage.classList.add('visible');
+
+                    // Don't load reports for citizens
+                }
+            } catch (err) {
+                console.log('Not logged in:', err);
+                window.location.href = '/login';
+            }
+        }
+
+        // Initial load (fetch user first, then conditionally load reports)
+        fetchUser();
     </script>
 </body>
+
 </html>

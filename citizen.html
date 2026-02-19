@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏙️ Citizen Dashboard | Urban Issues Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <div class="header-title">
+                <i class="fas fa-city"></i>
+                Urban Issues Platform
+            </div>
+            <div class="user-section">
+                <!-- Notification Bell -->
+                <div class="notification-wrapper" style="position: relative;">
+                    <button class="notification-bell" id="notification-bell" style="
+                        background: transparent; border: none; cursor: pointer; position: relative;
+                        font-size: 1.25rem; color: #6b7280; padding: 0.5rem; border-radius: 50%;
+                        transition: all 0.2s;">
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-badge" style="
+                            position: absolute; top: 0; right: 0;
+                            background: #ef4444; color: white;
+                            font-size: 0.65rem; font-weight: 700;
+                            min-width: 18px; height: 18px;
+                            border-radius: 50%; display: none;
+                            align-items: center; justify-content: center;">0</span>
+                    </button>
+                    <!-- Notification Dropdown -->
+                    <div id="notification-dropdown" style="
+                        display: none; position: absolute; top: 100%; right: 0;
+                        width: 320px; max-height: 400px; overflow-y: auto;
+                        background: white; border-radius: 12px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+                        z-index: 1000; margin-top: 0.5rem;">
+                        <div
+                            style="padding: 1rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 1rem;">🔔 Notifications</h3>
+                            <button id="mark-all-read" style="
+                                background: #dbeafe; border: none; padding: 0.25rem 0.5rem;
+                                border-radius: 6px; font-size: 0.75rem; color: #1e40af; cursor: pointer;">
+                                Mark all read
+                            </button>
+                        </div>
+                        <div id="notification-list" style="padding: 0.5rem;">
+                            <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                                <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                                <p>No notifications yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-badge">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="username-display">Loading...</span>
+                </div>
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container">
+
+        <!-- Stats Overview -->
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card pending">
+                <div class="stat-icon" style="background: #fef3c7; color: #92400e;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-label">Pending</div>
+                <div class="stat-value" id="stat-pending">0</div>
+            </div>
+            <div class="stat-card accepted">
+                <div class="stat-icon" style="background: #d1fae5; color: #065f46;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-label">Accepted</div>
+                <div class="stat-value" id="stat-accepted">0</div>
+            </div>
+            <div class="stat-card assigned">
+                <div class="stat-icon" style="background: #dbeafe; color: #1e40af;">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-label">Assigned</div>
+                <div class="stat-value" id="stat-assigned">0</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-icon" style="background: #dcfce7; color: #166534;">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="stat-label">Completed</div>
+                <div class="stat-value" id="stat-completed">0</div>
+            </div>
+        </div>
+
+        <!-- Submit Report Section -->
+        <div class="submit-section" id="submit-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-plus-circle"></i>
+                    Report New Issue
+                </div>
+                <button class="toggle-btn" id="toggle-form-btn">
+                    <i class="fas fa-chevron-down"></i> Show Form
+                </button>
+            </div>
+
+            <div id="form-container" style="display: none;">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Upload a photo and our AI will automatically classify the issue. You can also manually select
+                        the type.</span>
+                </div>
+
+                <div id="alert-container"></div>
+
+                <form id="report-form" class="report-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-camera"></i> Issue Photo *
+                            </label>
+                            <input type="file" id="image-input" name="image" class="form-input" accept="image/*"
+                                required>
+                            <button type="button" id="detect-ai-btn" class="toggle-btn"
+                                style="margin-top: 0.5rem; background: linear-gradient(135deg, #10b981, #059669);">
+                                <i class="fas fa-magic"></i> ✨ Detect with AI
+                            </button>
+                            <div id="ai-result"
+                                style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: #ecfdf5; border-radius: 8px; border: 1px solid #10b981;">
+                                <span id="ai-result-text"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-tag"></i> Issue Type
+                            </label>
+                            <select id="issue-type" name="issue_type" class="form-select">
+                                <option value="">-- Let AI Decide --</option>
+                                <option value="Pothole">Pothole / Road Damage</option>
+                                <option value="Streetlight">Broken Streetlight</option>
+                                <option value="Garbage">Overflowing Garbage</option>
+                                <option value="Waterlogging">Waterlogging / Drainage</option>
+                                <option value="Unsafe Area">Unsafe Area / Encroachment</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-align-left"></i> Description *
+                        </label>
+                        <textarea id="description" name="description" class="form-textarea" rows="3"
+                            placeholder="Describe the issue in detail..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-map-marker-alt"></i> Location *
+                        </label>
+                        <input type="text" id="location-name" class="form-input"
+                            placeholder="e.g., Banjara Hills, Hyderabad">
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" id="use-gps-btn" class="toggle-btn"
+                                style="background: linear-gradient(135deg, #10b981, #059669); flex: 1;">
+                                <i class="fas fa-crosshairs"></i> 📍 Use My Location
+                            </button>
+                            <button type="button" id="search-location-btn" class="toggle-btn" style="flex: 1;">
+                                <i class="fas fa-search"></i> Search Location
+                            </button>
+                        </div>
+                        <div id="location-status"
+                            style="display: none; margin-top: 0.5rem; padding: 0.5rem; border-radius: 8px; font-size: 0.85rem;">
+                        </div>
+                    </div>
+
+                    <div class="map-container" id="map"></div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-hand-pointer"></i>
+                        <span><strong>Click on the map</strong> to set the exact location of the issue</span>
+                    </div>
+
+                    <input type="hidden" id="latitude" name="latitude" required>
+                    <input type="hidden" id="longitude" name="longitude" required>
+
+                    <button type="submit" class="submit-btn">
+                        <i class="fas fa-paper-plane"></i> Submit Report
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- My Reports Section -->
+        <div class="reports-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-list"></i>
+                    My Reports
+                </div>
+            </div>
+
+            <div id="loading-container" style="text-align: center; padding: 3rem;">
+                <div class="loading-spinner"></div>
+                <p style="margin-top: 1rem; color: var(--text-secondary);">Loading your reports...</p>
+            </div>
+
+            <div id="reports-container" class="reports-grid" style="display: none;"></div>
+
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📭</div>
+                <div class="empty-title">No Reports Yet</div>
+                <div class="empty-text">Submit your first report to get started!</div>
+            </div>
+        </div>
+
+        <!-- Explore All Issues Map -->
+        <div class="reports-section" style="margin-top: 2rem;">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-map-marked-alt"></i>
+                    Explore All City Issues
+                </div>
+                <button class="toggle-btn" id="toggle-explore-btn">
+                    <i class="fas fa-chevron-down"></i> Show Map
+                </button>
+            </div>
+
+            <div id="explore-container" style="display: none;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <button class="filter-chip active" data-type=""
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem;">
+                        🌍 All Issues
+                    </button>
+                    <button class="filter-chip" data-type="Pothole"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; background: #fef3c7;">
+                        🕳️ Potholes
+                    </button>
+                    <button class="filter-chip" data-type="Streetlight"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; background: #dbeafe;">
+                        💡 Streetlights
+                    </button>
+                    <button class="filter-chip" data-type="Garbage"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; background: #d1fae5;">
+                        🗑️ Garbage
+                    </button>
+                    <button class="filter-chip" data-type="Waterlogging"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; background: #e0e7ff;">
+                        💧 Waterlogging
+                    </button>
+                    <button class="filter-chip" data-type="Unsafe Area"
+                        style="padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; background: #fee2e2;">
+                        ⚠️ Unsafe Areas
+                    </button>
+                </div>
+                <div id="explore-map" style="height: 400px; border-radius: 12px; border: 2px solid #e5e7eb;"></div>
+                <div
+                    style="display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.75rem; color: #6b7280; flex-wrap: wrap;">
+                    <span>🟡 Pending</span>
+                    <span>🟢 Accepted</span>
+                    <span>🔵 Assigned</span>
+                    <span>✅ Completed</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Global variables
+        let map;
+        let marker;
+        let userRole = null;
+        let allReports = [];
+
+        // Initialize map
+        function initMap() {
+            if (!map) {
+                map = L.map('map').setView([17.385, 78.4867], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                map.on('click', function (e) {
+                    if (marker) {
+                        map.removeLayer(marker);
+                    }
+                    marker = L.marker(e.latlng).addTo(map);
+                    document.getElementById('latitude').value = e.latlng.lat.toFixed(6);
+                    document.getElementById('longitude').value = e.latlng.lng.toFixed(6);
+                });
+            }
+        }
+
+        // Check authentication and load user data
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('username-display').textContent = data.username;
+                    userRole = data.role;
+
+                    if (userRole === 'admin') {
+                        // Redirect admins to admin view
+                        window.location.href = '/admin';
+                    }
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        // Load reports
+        async function loadReports() {
+            try {
+                const response = await fetch('/api/reports');
+                const reports = await response.json();
+                allReports = reports;
+
+                // Filter for "My Reports" section - show only reports submitted by current user
+                const myReports = reports.filter(r => r.is_mine);
+
+                displayReports(myReports);
+                updateStats(myReports);
+
+                // If filtered list is empty but total is not (new user context), show empty state
+                if (myReports.length === 0 && reports.length > 0) {
+                    document.getElementById('reports-container').style.display = 'none';
+                    document.getElementById('empty-state').style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                showAlert('Failed to load reports', 'error');
+            }
+        }
+
+        // Display reports
+        function displayReports(reports) {
+            const container = document.getElementById('reports-container');
+            const loading = document.getElementById('loading-container');
+            const emptyState = document.getElementById('empty-state');
+
+            loading.style.display = 'none';
+
+            if (reports.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            container.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            container.innerHTML = reports.map(report => `
+                <div class="report-item">
+                    <img src="${report.image_url}" alt="${report.issue_type}" class="report-image">
+                    <div class="report-content">
+                        <div class="report-header">
+                            <div class="report-type">${report.issue_type}</div>
+                            <span class="status-badge status-${report.status.toLowerCase().replace(' ', '-')}">${report.status}</span>
+                        </div>
+                        <p class="report-description">${report.description}</p>
+                        <div class="report-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-building"></i>
+                                <span class="meta-label">${report.target_authority}</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span class="meta-label">Priority:</span>
+                                <span class="priority-indicator priority-${report.priority_score > 7 ? 'high' : report.priority_score > 4 ? 'medium' : 'low'}">
+                                    ${report.priority_score}/10
+                                </span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>${new Date(report.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                            <button onclick="upvoteReport('${report._id}')" 
+                                class="toggle-btn" 
+                                style="flex: 1; background: ${report.has_upvoted ? '#3b82f6' : '#e5e7eb'}; color: ${report.has_upvoted ? 'white' : '#374151'}; font-size: 0.85rem;">
+                                <i class="fas fa-thumbs-up"></i> ${report.upvote_count || 0} Upvotes
+                            </button>
+                            <button onclick="verifyReport('${report._id}')"
+                                class="toggle-btn" 
+                                style="flex: 1; background: ${report.has_verified ? '#f59e0b' : '#e5e7eb'}; color: ${report.has_verified ? 'white' : '#374151'}; font-size: 0.85rem;"
+                                ${report.status === 'Completed' ? 'disabled' : ''}>
+                                <i class="fas fa-eye"></i> ${report.verified_count || 0} Still There
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStats(reports) {
+            const stats = {
+                Pending: 0,
+                Accepted: 0,
+                Assigned: 0,
+                Completed: 0
+            };
+
+            reports.forEach(report => {
+                if (stats.hasOwnProperty(report.status)) {
+                    stats[report.status]++;
+                }
+            });
+
+            document.getElementById('stat-pending').textContent = stats.Pending;
+            document.getElementById('stat-accepted').textContent = stats.Accepted;
+            document.getElementById('stat-assigned').textContent = stats.Assigned;
+            document.getElementById('stat-completed').textContent = stats.Completed;
+        }
+
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        // Upvote a report
+        async function upvoteReport(reportId) {
+            try {
+                const response = await fetch(`/api/reports/${reportId}/upvote`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert(data.message, 'success');
+                    loadReports(); // Refresh to update counts
+                } else {
+                    showAlert(data.error || 'Failed to upvote', 'error');
+                }
+            } catch (error) {
+                console.error('Upvote error:', error);
+                showAlert('Failed to upvote', 'error');
+            }
+        }
+
+        // Verify a report is still unresolved
+        async function verifyReport(reportId) {
+            try {
+                const response = await fetch(`/api/reports/${reportId}/verify`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert(data.message, 'success');
+                    loadReports(); // Refresh to update counts
+                } else {
+                    showAlert(data.error || 'Failed to verify', 'error');
+                }
+            } catch (error) {
+                console.error('Verify error:', error);
+                showAlert('Failed to verify', 'error');
+            }
+        }
+
+        // Submit report form
+        document.getElementById('report-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const lat = formData.get('latitude');
+            const lon = formData.get('longitude');
+
+            if (!lat || !lon) {
+                showAlert('⚠️ Please click on the map or use GPS to set the location.', 'error');
+                return;
+            }
+
+            const submitBtn = e.target.querySelector('.submit-btn');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+            try {
+                const response = await fetch('/api/report', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.is_duplicate) {
+                        showAlert(`🔗 ${data.message} (Report count: ${data.report_count})`, 'info');
+                    } else {
+                        showAlert('✅ Report submitted successfully!', 'success');
+                    }
+                    e.target.reset();
+                    loadReports();
+
+                    // Hide form
+                    document.getElementById('form-container').style.display = 'none';
+                    document.getElementById('toggle-form-btn').innerHTML = '<i class="fas fa-chevron-down"></i> Show Form';
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Failed to submit report', 'error');
+                }
+            } catch (error) {
+                console.error('Submit error:', error);
+                showAlert('Network error. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+            }
+        });
+
+        // Toggle form visibility
+        document.getElementById('toggle-form-btn').addEventListener('click', () => {
+            const container = document.getElementById('form-container');
+            const btn = document.getElementById('toggle-form-btn');
+
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide Form';
+                initMap();
+            } else {
+                container.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-chevron-down"></i> Show Form';
+            }
+        });
+
+        // Search location
+        document.getElementById('search-location-btn').addEventListener('click', async () => {
+            const locationName = document.getElementById('location-name').value;
+            if (!locationName) return;
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}`);
+                const results = await response.json();
+
+                if (results.length > 0) {
+                    const lat = parseFloat(results[0].lat);
+                    const lon = parseFloat(results[0].lon);
+
+                    map.setView([lat, lon], 15);
+
+                    if (marker) {
+                        map.removeLayer(marker);
+                    }
+                    marker = L.marker([lat, lon]).addTo(map);
+
+                    document.getElementById('latitude').value = lat.toFixed(6);
+                    document.getElementById('longitude').value = lon.toFixed(6);
+
+                    showAlert('Location found!', 'success');
+                } else {
+                    showAlert('Location not found. Try a different search.', 'error');
+                }
+            } catch (error) {
+                console.error('Location search error:', error);
+                showAlert('Failed to search location', 'error');
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.href = '/api/auth/logout';
+        });
+
+        // GPS Auto-Location Detection
+        document.getElementById('use-gps-btn').addEventListener('click', async () => {
+            const gpsBtn = document.getElementById('use-gps-btn');
+            const locationStatus = document.getElementById('location-status');
+
+            // Check if geolocation is supported
+            if (!navigator.geolocation) {
+                showAlert('Geolocation is not supported by your browser', 'error');
+                return;
+            }
+
+            // Show loading state
+            gpsBtn.disabled = true;
+            gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting...';
+            locationStatus.style.display = 'block';
+            locationStatus.style.background = '#dbeafe';
+            locationStatus.style.color = '#1e40af';
+            locationStatus.innerHTML = '<i class="fas fa-satellite-dish"></i> Acquiring GPS signal...';
+
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+
+                // Update map and coordinates
+                if (!map) initMap();
+                map.setView([lat, lon], 16);
+
+                if (marker) map.removeLayer(marker);
+                marker = L.marker([lat, lon]).addTo(map);
+
+                document.getElementById('latitude').value = lat.toFixed(6);
+                document.getElementById('longitude').value = lon.toFixed(6);
+
+                // Reverse geocode to get address
+                locationStatus.innerHTML = '<i class="fas fa-map-marked-alt"></i> Getting address...';
+
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const geoData = await geoRes.json();
+
+                    if (geoData.display_name) {
+                        document.getElementById('location-name').value = geoData.display_name.split(',').slice(0, 3).join(', ');
+                    }
+                } catch (e) {
+                    console.log('Reverse geocoding failed, using coordinates');
+                }
+
+                // Success
+                locationStatus.style.background = '#d1fae5';
+                locationStatus.style.color = '#065f46';
+                locationStatus.innerHTML = `<i class="fas fa-check-circle"></i> Location captured! (Accuracy: ±${Math.round(accuracy)}m)`;
+
+                showAlert('📍 Location captured successfully!', 'success');
+
+            } catch (error) {
+                console.error('GPS error:', error);
+                locationStatus.style.background = '#fee2e2';
+                locationStatus.style.color = '#991b1b';
+
+                let errorMsg = 'Unable to get location';
+                if (error.code === 1) errorMsg = 'Location permission denied. Please allow location access.';
+                if (error.code === 2) errorMsg = 'Location unavailable. Try again or use manual search.';
+                if (error.code === 3) errorMsg = 'Location request timed out. Try again.';
+
+                locationStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${errorMsg}`;
+                showAlert(errorMsg, 'error');
+            } finally {
+                gpsBtn.disabled = false;
+                gpsBtn.innerHTML = '<i class="fas fa-crosshairs"></i> 📍 Use My Location';
+            }
+        });
+
+        // Detect with AI - OpenAI Vision API
+        document.getElementById('detect-ai-btn').addEventListener('click', async () => {
+            const imageInput = document.getElementById('image-input');
+            const detectBtn = document.getElementById('detect-ai-btn');
+            const aiResult = document.getElementById('ai-result');
+            const aiResultText = document.getElementById('ai-result-text');
+
+            if (!imageInput.files || imageInput.files.length === 0) {
+                showAlert('Please select an image first!', 'error');
+                return;
+            }
+
+            const file = imageInput.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            // Show loading state
+            detectBtn.disabled = true;
+            detectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            aiResult.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/analyze-image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update issue type dropdown
+                    const issueTypeSelect = document.getElementById('issue-type');
+                    const normalizedType = data.issue_type.trim();
+
+                    // Find matching option
+                    for (let option of issueTypeSelect.options) {
+                        if (option.value.toLowerCase() === normalizedType.toLowerCase() ||
+                            option.value.toLowerCase().includes(normalizedType.toLowerCase())) {
+                            issueTypeSelect.value = option.value;
+                            break;
+                        }
+                    }
+
+                    // Update description if empty
+                    const descriptionField = document.getElementById('description');
+                    if (!descriptionField.value && data.description) {
+                        descriptionField.value = data.description;
+                    }
+
+                    // Show AI result
+                    const confidence = data.confidence ? Math.round(data.confidence * 100) : 'N/A';
+                    aiResultText.innerHTML = `<strong>🎯 AI Detected:</strong> ${data.issue_type} (${confidence}% confidence)`;
+                    aiResult.style.display = 'block';
+
+                    showAlert(`AI detected: ${data.issue_type}`, 'success');
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'AI detection failed', 'error');
+                }
+            } catch (error) {
+                console.error('AI detection error:', error);
+                showAlert('Failed to analyze image. Please try again.', 'error');
+            } finally {
+                detectBtn.disabled = false;
+                detectBtn.innerHTML = '<i class="fas fa-magic"></i> ✨ Detect with AI';
+            }
+        });
+
+        // Explore Map functionality
+        let exploreMap = null;
+        let exploreMarkers = [];
+        let allExploreReports = [];
+
+        function initExploreMap() {
+            if (exploreMap) return;
+            exploreMap = L.map('explore-map').setView([17.385, 78.486], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(exploreMap);
+        }
+
+        function getMarkerColor(status) {
+            switch (status) {
+                case 'Pending': return '#f59e0b';
+                case 'Accepted': return '#10b981';
+                case 'Assigned': return '#3b82f6';
+                case 'Completed': return '#22c55e';
+                default: return '#6b7280';
+            }
+        }
+
+        function getIssueIcon(issueType) {
+            switch (issueType) {
+                case 'Pothole': return '🕳️';
+                case 'Streetlight': return '💡';
+                case 'Garbage': return '🗑️';
+                case 'Waterlogging': return '💧';
+                case 'Unsafe Area': return '⚠️';
+                default: return '📍';
+            }
+        }
+
+        async function loadExploreReports(filterType = '') {
+            try {
+                const response = await fetch('/api/reports');
+                allExploreReports = await response.json();
+                renderExploreMarkers(filterType);
+            } catch (error) {
+                console.error('Failed to load explore reports:', error);
+            }
+        }
+
+        function renderExploreMarkers(filterType = '') {
+            // Clear existing markers
+            exploreMarkers.forEach(m => exploreMap.removeLayer(m));
+            exploreMarkers = [];
+
+            let reports = allExploreReports;
+            if (filterType) {
+                reports = reports.filter(r => r.issue_type === filterType);
+            }
+
+            reports.forEach(report => {
+                const color = getMarkerColor(report.status);
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                        background: ${color}; 
+                        width: 32px; height: 32px; 
+                        border-radius: 50% 50% 50% 0; 
+                        transform: rotate(-45deg);
+                        display: flex; align-items: center; justify-content: center;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                        border: 2px solid white;">
+                        <span style="transform: rotate(45deg); font-size: 14px;">${getIssueIcon(report.issue_type)}</span>
+                    </div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                });
+
+                const marker = L.marker([report.latitude, report.longitude], { icon })
+                    .addTo(exploreMap)
+                    .bindPopup(`
+                        <div style="min-width: 200px; font-family: 'Inter', sans-serif;">
+                            <img src="${report.image_url}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 8px; margin-bottom: 0.5rem;">
+                            <h4 style="margin: 0 0 0.25rem; font-size: 1rem;">${report.issue_type}</h4>
+                            <span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 12px; font-size: 0.7rem; background: ${color}; color: white;">${report.status}</span>
+                            <p style="margin: 0.5rem 0; font-size: 0.85rem; color: #6b7280;">${report.description.slice(0, 80)}...</p>
+                            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #9ca3af;">
+                                <span>👍 ${report.upvote_count || 0}</span>
+                                <span>👁️ ${report.verified_count || 0}</span>
+                            </div>
+                        </div>
+                    `);
+                exploreMarkers.push(marker);
+            });
+
+            // Fit bounds if there are markers
+            if (exploreMarkers.length > 0) {
+                const group = L.featureGroup(exploreMarkers);
+                exploreMap.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        // Toggle explore map
+        document.getElementById('toggle-explore-btn').addEventListener('click', () => {
+            const container = document.getElementById('explore-container');
+            const btn = document.getElementById('toggle-explore-btn');
+
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide Map';
+                initExploreMap();
+                setTimeout(() => {
+                    exploreMap.invalidateSize();
+                    loadExploreReports();
+                }, 100);
+            } else {
+                container.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-chevron-down"></i> Show Map';
+            }
+        });
+
+        // Filter chips
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const filterType = chip.dataset.type;
+                renderExploreMarkers(filterType);
+            });
+        });
+
+        // ============================
+        //  NOTIFICATIONS SYSTEM
+        // ============================
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/api/notifications');
+                if (response.ok) {
+                    const notifications = await response.json();
+                    renderNotifications(notifications);
+                    updateBadge(notifications.filter(n => !n.read).length);
+                }
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+            }
+        }
+
+        function renderNotifications(notifications) {
+            const list = document.getElementById('notification-list');
+
+            if (notifications.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                        <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                        <p>No notifications yet</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = notifications.map(n => `
+                <div class="notification-item" style="
+                    padding: 0.75rem; margin-bottom: 0.5rem;
+                    background: ${n.read ? '#f9fafb' : '#eff6ff'};
+                    border-radius: 8px; cursor: pointer;
+                    border-left: 3px solid ${n.read ? '#e5e7eb' : '#3b82f6'};"
+                    onclick="markAsRead('${n._id}')">
+                    <div style="display: flex; gap: 0.75rem; align-items: start;">
+                        <span style="font-size: 1.5rem;">
+                            ${n.new_status === 'Completed' ? '✅' : n.new_status === 'Assigned' ? '👷' : '🎉'}
+                        </span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0 0 0.25rem; font-size: 0.875rem; color: #1f2937;">${n.message}</p>
+                            <span style="font-size: 0.75rem; color: #6b7280;">${n.issue_type || 'Issue'} • ${formatTime(n.created_at)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateBadge(count) {
+            const badge = document.getElementById('notification-badge');
+            if (count > 0) {
+                badge.textContent = count > 9 ? '9+' : count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = (now - date) / 1000;
+
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+            return date.toLocaleDateString();
+        }
+
+        async function markAsRead(notificationId) {
+            try {
+                await fetch(`/api/notifications/${notificationId}/read`, { method: 'PUT' });
+                loadNotifications();
+            } catch (error) {
+                console.error('Failed to mark as read:', error);
+            }
+        }
+
+        async function markAllRead() {
+            try {
+                await fetch('/api/notifications/read-all', { method: 'PUT' });
+                loadNotifications();
+            } catch (error) {
+                console.error('Failed to mark all as read:', error);
+            }
+        }
+
+        // Toggle notification dropdown
+        document.getElementById('notification-bell').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdown = document.getElementById('notification-dropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            if (dropdown.style.display === 'block') {
+                loadNotifications();
+            }
+        });
+
+        // Mark all read button
+        document.getElementById('mark-all-read').addEventListener('click', markAllRead);
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('notification-dropdown');
+            const bell = document.getElementById('notification-bell');
+            if (!dropdown.contains(e.target) && !bell.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            loadReports();
+            loadNotifications();
+            // Poll for new notifications every 30 seconds
+            setInterval(loadNotifications, 30000);
+        });
+    </script>
+</body>
+
+</html>
