@@ -113,6 +113,31 @@ This project is a full-stack web application for crowd-sourced reporting and man
 
 ---
 
+## Deployment on Render
+
+### 1. Prerequisites
+- Ensure your code is ready and all dependencies are listed in requirements.txt.
+- Procfile is present with: `web: gunicorn app:app`
+
+### 2. Steps
+1. Push your code to a GitHub repository.
+2. Go to [Render.com](https://render.com/) and create a new Web Service.
+3. Connect your GitHub repo.
+4. Select Python environment.
+5. Render will auto-detect requirements.txt and Procfile.
+6. Set environment variables if needed (e.g., MongoDB URI).
+7. Click Deploy.
+
+### 3. Static Files
+- Ensure static files are in the `static/` directory.
+- Flask will serve them automatically.
+
+### 4. Troubleshooting
+- Check Render logs for errors.
+- Make sure gunicorn and Flask are in requirements.txt.
+
+---
+
 ## Notes
 - For production, remove development/test scripts and cache files (already cleaned).
 - Only keep essential files as described above.
