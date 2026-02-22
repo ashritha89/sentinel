@@ -800,3 +800,6 @@ def create_app(config_dict=None):
             logging.error("="*60 + "\n")
 
     return app
+
+# For Gunicorn compatibility
+app = create_app()
