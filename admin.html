@@ -587,6 +587,59 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+        .worker-select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
     </style>
 </head>
 
@@ -759,6 +812,27 @@
             </div>
         </div>
     </main>
+
+    <!-- Assign Worker Modal -->
+    <div class="modal-overlay" id="assignModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>Assign Worker</span>
+                <button class="modal-close" onclick="closeAssignModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="workerSelect" style="font-weight: 600;">Select a Worker:</label>
+                <select id="workerSelect" class="worker-select">
+                    <option value="">Loading workers...</option>
+                </select>
+                <input type="hidden" id="assignReportId">
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn" style="background:#e2e8f0;" onclick="closeAssignModal()">Cancel</button>
+                <button class="action-btn btn-assign" onclick="submitAssignment()">Assign</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
@@ -1002,7 +1076,7 @@
                             <button class="action-btn btn-accept" onclick="updateStatus('${r._id}', 'Accepted')" ${r.status !== 'Pending' ? 'disabled' : ''}>
                                 <i class="fas fa-check"></i> Accept
                             </button>
-                            <button class="action-btn btn-assign" onclick="updateStatus('${r._id}', 'Assigned')" ${r.status !== 'Accepted' ? 'disabled' : ''}>
+                            <button class="action-btn btn-assign" onclick="openAssignModal('${r._id}')" ${r.status !== 'Accepted' ? 'disabled' : ''}>
                                 <i class="fas fa-user-plus"></i> Assign
                             </button>
                             <button class="action-btn btn-complete" onclick="updateStatus('${r._id}', 'Completed')" ${r.status !== 'Assigned' ? 'disabled' : ''}>
@@ -1027,6 +1101,63 @@
                 }
             } catch (e) {
                 console.error('Update error:', e);
+            }
+        }
+
+        // Modal Logic
+        async function openAssignModal(reportId) {
+            document.getElementById('assignReportId').value = reportId;
+            document.getElementById('assignModal').style.display = 'flex';
+            
+            // Fetch workers
+            try {
+                const res = await fetch('/api/workers');
+                const workers = await res.json();
+                const select = document.getElementById('workerSelect');
+                if (workers.length === 0) {
+                    select.innerHTML = '<option value="">No workers found</option>';
+                    return;
+                }
+                select.innerHTML = '<option value="">-- Choose Worker --</option>';
+                workers.forEach(w => {
+                    select.innerHTML += `<option value="${w._id}">${w.username} (${w.email})</option>`;
+                });
+            } catch (e) {
+                console.error('Error fetching workers', e);
+                document.getElementById('workerSelect').innerHTML = '<option value="">Error loading workers</option>';
+            }
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').style.display = 'none';
+        }
+
+        async function submitAssignment() {
+            const reportId = document.getElementById('assignReportId').value;
+            const workerId = document.getElementById('workerSelect').value;
+
+            if (!workerId) {
+                alert('Please select a worker');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/reports/${reportId}/assign`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ worker_id: workerId })
+                });
+
+                if (res.ok) {
+                    closeAssignModal();
+                    loadReports();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to assign worker');
+                }
+            } catch (e) {
+                console.error('Submission error:', e);
+                alert('Connection error');
             }
         }
 

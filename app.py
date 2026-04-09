@@ -165,7 +165,8 @@ def serialize_report(report, user_id=None, username=None):
         "verified_count": report.get("verified_count", 0),
         "has_upvoted": user_id in upvoted_by if user_id else False,
         "has_verified": user_id in verified_by if user_id else False,
-        "is_mine": report.get("submitted_by") == username if username else False
+        "is_mine": report.get("submitted_by") == username if username else False,
+        "assigned_worker_name": report.get("assigned_worker_name", "")
     }
 
 
@@ -193,24 +194,41 @@ def register_api_endpoints(app):
             return redirect(url_for('serve_index'))
         return send_from_directory(BASE_DIR, 'login.html')
 
-    # Protected Dashboard
+
     @app.route("/")
+    def homepage():
+        if 'user_id' in session:
+            # Redirect to dashboard if logged in
+            user_role = session.get('role', 'citizen')
+            if user_role == 'admin':
+                return redirect(url_for('serve_admin'))
+            elif user_role == 'worker':
+                return redirect(url_for('serve_worker'))
+            else:
+                return redirect(url_for('serve_citizen'))
+        return send_from_directory(BASE_DIR, 'index.html')
+
+    # Citizen dashboard (protected)
+    @app.route("/citizen")
     @login_required
-    def serve_index():
-        # Check user role and serve appropriate dashboard
-        user_role = session.get('role', 'citizen')
-        if user_role == 'admin':
-            return send_from_directory(BASE_DIR, 'admin.html')
-        else:
-            return send_from_directory(BASE_DIR, 'citizen.html')
-    
-    # Admin dashboard route
+    def serve_citizen():
+        return send_from_directory(BASE_DIR, 'citizen.html')
+
+    # Admin dashboard route (protected)
     @app.route("/admin")
     @login_required
     def serve_admin():
         if session.get('role') != 'admin':
-            return redirect(url_for('serve_index'))
+            return redirect(url_for('homepage'))
         return send_from_directory(BASE_DIR, 'admin.html')
+    
+    # Worker dashboard route (protected)
+    @app.route("/worker")
+    @login_required
+    def serve_worker():
+        if session.get('role') != 'worker':
+            return redirect(url_for('homepage'))
+        return send_from_directory(BASE_DIR, 'worker.html')
     
     @app.route("/api/auth/signup", methods=["POST"])
     def signup():
@@ -408,16 +426,18 @@ Respond in JSON format only:
         RADIUS_IN_RADIANS = 50 / 6378137.0
         geojson_location = {"type": "Point", "coordinates": [lon, lat]}
 
-        # Check for duplicate: same issue type within 50m, not completed
-        duplicate_report = reports_collection.find_one({
-            "issue_type": issue_type_final,
-            "status": {"$ne": "Completed"},
-            "location": {
-                "$geoWithin": {
-                    "$centerSphere": [[lon, lat], RADIUS_IN_RADIANS]
-                }
-            }
-        })
+        # Check for duplicate: disabled for testing so users can upload images freely
+        # duplicate_report = reports_collection.find_one({
+        #     "issue_type": issue_type_final,
+        #     "status": {"$ne": "Completed"},
+        #     "location": {
+        #         "$geoWithin": {
+        #             "$centerSphere": [[lon, lat], RADIUS_IN_RADIANS]
+        #         }
+        #     }
+        # })
+
+        duplicate_report = None
 
         if duplicate_report:
             # Merge with existing report - increment report count and add upvote
@@ -503,6 +523,11 @@ Respond in JSON format only:
                 if issues:
                     query["issue_type"] = {"$in": issues}
 
+            # If user is a worker, only show Assigned or Completed issues assigned to them
+            if session.get('role') == 'worker':
+                query["assigned_worker"] = user_id
+                query["status"] = {"$in": ["Assigned", "Completed"]}
+
             # Fetch all matching reports
             cursor = reports_collection.find(query).sort("created_at", -1)
             
@@ -526,9 +551,10 @@ Respond in JSON format only:
     @login_required
     def update_report_status(report_id):
         """Update the status of a report (admin only)"""
-        # Check if user is admin
-        if session.get('role') != 'admin':
-            return jsonify({"error": "Unauthorized. Admin access required."}), 403
+        # Check if user is admin or worker
+        user_role = session.get('role')
+        if user_role not in ['admin', 'worker']:
+            return jsonify({"error": "Unauthorized. Admin or worker access required."}), 403
         
         data = request.json
         new_status = data.get("status")
@@ -537,6 +563,9 @@ Respond in JSON format only:
         valid_statuses = ["Pending", "Accepted", "Assigned", "Completed"]
         if new_status not in valid_statuses:
             return jsonify({"error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
+            
+        if user_role == 'worker' and new_status != 'Completed':
+            return jsonify({"error": "Workers can only mark reports as Completed."}), 403
         
         try:
             from bson import ObjectId
@@ -582,6 +611,68 @@ Respond in JSON format only:
         except Exception as e:
             logging.error(f"Error updating status: {str(e)}")
             return jsonify({"error": "Failed to update status"}), 500
+
+    @app.route("/api/workers", methods=["GET"])
+    @login_required
+    def get_workers():
+        if session.get('role') != 'admin':
+            return jsonify({"error": "Unauthorized"}), 403
+        workers = list(mongo.db.users.find({"role": "worker"}, {"password": 0}))
+        for w in workers:
+            w["_id"] = str(w["_id"])
+        return jsonify(workers)
+
+    @app.route("/api/reports/<report_id>/assign", methods=["PUT"])
+    @login_required
+    def assign_worker(report_id):
+        if session.get('role') != 'admin':
+            return jsonify({"error": "Unauthorized"}), 403
+        
+        data = request.json
+        worker_id = data.get("worker_id")
+        if not worker_id:
+            return jsonify({"error": "worker_id is required"}), 400
+            
+        try:
+            from bson import ObjectId
+            worker = mongo.db.users.find_one({"_id": ObjectId(worker_id)})
+            if not worker:
+                return jsonify({"error": "Worker not found"}), 404
+                
+            reports_collection = mongo.db.reports
+            
+            result = reports_collection.update_one(
+                {"_id": ObjectId(report_id)},
+                {"$set": {
+                    "status": "Assigned",
+                    "assigned_worker": worker_id,
+                    "assigned_worker_name": worker.get("username"),
+                    "updated_at": datetime.utcnow(),
+                    "updated_by": session.get('username')
+                }}
+            )
+            
+            if result.matched_count == 0:
+                return jsonify({"error": "Report not found"}), 404
+                
+            report = reports_collection.find_one({"_id": ObjectId(report_id)})
+            if report and report.get("submitted_by"):
+                notifications_collection = mongo.db.notifications
+                notifications_collection.insert_one({
+                    "user_id": report["submitted_by"],
+                    "type": "status_update",
+                    "message": "A worker has been assigned to your issue! 👷",
+                    "report_id": report_id,
+                    "issue_type": report.get("issue_type", "Unknown"),
+                    "new_status": "Assigned",
+                    "read": False,
+                    "created_at": datetime.utcnow()
+                })
+                
+            return jsonify({"message": "Worker assigned successfully", "status": "Assigned"}), 200
+        except Exception as e:
+            logging.error(f"Error assigning worker: {str(e)}")
+            return jsonify({"error": "Failed to assign worker"}), 500
 
     @app.route("/api/reports/<report_id>/upvote", methods=["POST"])
     @login_required

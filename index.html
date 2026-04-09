@@ -717,9 +717,45 @@
     </style>
 </head>
 
-<body>
 
-    <div class="sidebar" id="sidebar">
+<body>
+    <!-- Homepage Hero Section -->
+    <div id="homepage-hero" style="width:100vw; min-height:100vh; background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%); display:flex; flex-direction:column; align-items:center; justify-content:flex-start; position:fixed; z-index:9999; left:0; top:0;">
+        <div style="width:100%; display:flex; justify-content:flex-end; align-items:center; padding: 32px 48px 0 0; gap: 18px;">
+            <a href="/login" id="login-btn" style="padding: 10px 28px; background: var(--primary-color); color: #fff; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(37,99,235,0.08); transition: background 0.2s;">Login</a>
+            <a href="#" id="profile-btn" style="display:none; padding: 10px 24px; background: #f59e0b; color: #fff; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 1.05rem; box-shadow: 0 2px 8px rgba(245,158,11,0.08); transition: background 0.2s;"><i class="fa fa-user-circle"></i> Profile</a>
+        </div>
+        <div style="max-width: 700px; margin-top: 60px; background: rgba(255,255,255,0.95); border-radius: 24px; box-shadow: 0 8px 32px rgba(37,99,235,0.08); padding: 48px 40px 40px 40px; text-align: center;">
+            <h1 style="font-size:2.5rem; font-weight:800; color: var(--primary-color); margin-bottom: 18px;">AI-Powered Urban Issue Reporting</h1>
+            <p style="font-size:1.18rem; color: #374151; font-weight: 500; margin-bottom: 28px; line-height:1.7;">
+                Urban citizens face many daily challenges such as potholes, broken streetlights, waterlogging, overflowing garbage dumps, and unsafe areas. These problems affect the quality of life and safety but are often reported to local authorities with delays, inaccuracies, or incomplete details, which slow down the response and resolution process.<br><br>
+                <b>This project proposes an AI-driven web application that leverages crowdsourcing, enabling citizens to report street issues in real-time, accompanied by images or descriptions.</b> The system uses artificial intelligence to analyze these reports and automatically scan street conditions, providing authorities with clear, accurate, and up-to-date information. This helps in prioritizing and managing repairs or interventions more efficiently.<br><br>
+                By crowdsourcing data from the public, the app creates a dynamic, constantly updated map of urban issues that promotes transparency, improves communication between citizens and authorities, and enhances the overall management of city infrastructure. Such a tool is invaluable for smart city development, enabling faster responses, better resource allocation, and ultimately contributing to safer and more livable urban environments.
+            </p>
+            <div style="margin-top: 32px; display: flex; justify-content: center; gap: 18px;">
+                <a href="/login" style="background: var(--primary-color); color: #fff; padding: 16px 38px; border-radius: 10px; font-size: 1.15rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 8px rgba(37,99,235,0.10); transition: background 0.2s;">Login to Report</a>
+                <a href="#" style="background: #f59e0b; color: #fff; padding: 16px 38px; border-radius: 10px; font-size: 1.15rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 8px rgba(245,158,11,0.10); transition: background 0.2s;">Learn More</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Hide hero and show profile if already logged in
+    fetch('/api/auth/me').then(async r => {
+        if (r.ok) {
+            document.getElementById('login-btn').style.display = 'none';
+            document.getElementById('profile-btn').style.display = 'inline-block';
+            setTimeout(() => { document.getElementById('homepage-hero').style.display = 'none'; }, 1200);
+        } else {
+            document.getElementById('profile-btn').style.display = 'none';
+        }
+    }).catch(() => {
+        document.getElementById('profile-btn').style.display = 'none';
+    });
+    </script>
+
+
+    <div class="sidebar" id="sidebar" style="z-index:1;">
         <h2>Report Filtering</h2>
         <div id="user-info" style="text-align: center; margin-bottom: 20px; font-size: 0.9rem; color: #9ca3af;">
             Loading User...
